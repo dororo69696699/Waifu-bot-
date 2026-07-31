@@ -167,7 +167,7 @@ async def initialize_database():
         await create_user_collection_indexes()
         await create_character_collection_indexes()
         
-        # 🔥 ADD THIS BLOCK - Initialize rarity limits with defaults if empty
+        # 🔥 ADD THESE 3 LINES - Initialize rarity limits with defaults if empty
         from TEAMZYRO.unit.zyro_rarity import initialize_rarity_limits
         await initialize_rarity_limits()
         
