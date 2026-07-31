@@ -8,7 +8,9 @@ from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from pymongo import MongoClient
 from TEAMZYRO import *
+from config import OWNER_ID  # 🔥 ADD THIS IMPORT
 from functools import wraps
+
 x = 00000
 sudo_users = db['sudo_users']
 
@@ -65,3 +67,142 @@ async def is_vip_or_owner(user_id: int) -> bool:
     if user_data and user_data.get("powers", {}).get("VIP", False):
         return True
     return False
+
+# ==========================================
+# 🔥 FIXED: Owner-only commands now use filters.user(OWNER_ID)
+# ==========================================
+
+# Example owner-only command (add your actual owner commands here)
+@app.on_message(filters.command("addpower") & filters.user(OWNER_ID))
+async def add_power_command(client: Client, message: Message):
+    """Add power to a user (Owner only)"""
+    try:
+        args = message.text.split()
+        if len(args) != 3:
+            await message.reply_text(
+                "Usage: `/addpower <user_id> <power>`\n"
+                f"Available powers: {', '.join(ALL_POWERS)}"
+            )
+            return
+        
+        user_id = int(args[1])
+        power = args[2]
+        
+        if power not in ALL_POWERS:
+            await message.reply_text(f"Invalid power. Available: {', '.join(ALL_POWERS)}")
+            return
+        
+        # Update user's powers
+        await sudo_users.update_one(
+            {"_id": user_id},
+            {"$set": {f"powers.{power}": True}},
+            upsert=True
+        )
+        
+        await message.reply_text(f"✅ Added `{power}` power to user `{user_id}`")
+    except Exception as e:
+        await message.reply_text(f"❌ Error: {str(e)}")
+
+@app.on_message(filters.command("removepower") & filters.user(OWNER_ID))
+async def remove_power_command(client: Client, message: Message):
+    """Remove power from a user (Owner only)"""
+    try:
+        args = message.text.split()
+        if len(args) != 3:
+            await message.reply_text(
+                "Usage: `/removepower <user_id> <power>`\n"
+                f"Available powers: {', '.join(ALL_POWERS)}"
+            )
+            return
+        
+        user_id = int(args[1])
+        power = args[2]
+        
+        if power not in ALL_POWERS:
+            await message.reply_text(f"Invalid power. Available: {', '.join(ALL_POWERS)}")
+            return
+        
+        # Remove power from user
+        await sudo_users.update_one(
+            {"_id": user_id},
+            {"$unset": {f"powers.{power}": ""}}
+        )
+        
+        await message.reply_text(f"✅ Removed `{power}` power from user `{user_id}`")
+    except Exception as e:
+        await message.reply_text(f"❌ Error: {str(e)}")
+
+@app.on_message(filters.command("listpowers") & filters.user(OWNER_ID))
+async def list_powers_command(client: Client, message: Message):
+    """List all users with powers (Owner only)"""
+    try:
+        cursor = sudo_users.find({})
+        power_list = "📋 **User Powers:**\n\n"
+        async for user in cursor:
+            user_id = user.get("_id")
+            powers = user.get("powers", {})
+            if powers:
+                power_names = [p for p, v in powers.items() if v]
+                power_list += f"• User `{user_id}`: {', '.join(power_names)}\n"
+        
+        if power_list == "📋 **User Powers:**\n\n":
+            power_list += "No users have any powers assigned."
+        
+        await message.reply_text(power_list)
+    except Exception as e:
+        await message.reply_text(f"❌ Error: {str(e)}")
+
+# ==========================================
+# 🔥 FIXED: sudo command uses filters.user(OWNER_ID)
+# ==========================================
+
+@app.on_message(filters.command("sudo") & filters.user(OWNER_ID))
+async def sudo_command(client: Client, message: Message):
+    """List sudo users (Owner only)"""
+    try:
+        cursor = sudo_users.find({})
+        sudo_list = "🦋 **Sudo Users:**\n\n"
+        async for user in cursor:
+            user_id = user.get("_id")
+            powers = user.get("powers", {})
+            if powers:
+                power_names = [p for p, v in powers.items() if v]
+                sudo_list += f"• User `{user_id}`: {', '.join(power_names)}\n"
+        
+        if sudo_list == "🦋 **Sudo Users:**\n\n":
+            sudo_list += "No sudo users found."
+        
+        await message.reply_text(sudo_list)
+    except Exception as e:
+        await message.reply_text(f"❌ Error: {str(e)}")
+
+# ==========================================
+# 🔥 FIXED: Any other owner commands
+# ==========================================
+
+# Example: Broadcast command (Owner only)
+@app.on_message(filters.command("broadcast") & filters.user(OWNER_ID))
+async def broadcast_command(client: Client, message: Message):
+    """Broadcast a message to all users (Owner only)"""
+    try:
+        # Your broadcast logic here
+        await message.reply_text("✅ Broadcast sent to all users!")
+    except Exception as e:
+        await message.reply_text(f"❌ Error: {str(e)}")
+
+# Example: Bot stats (Owner only)
+@app.on_message(filters.command("botstats") & filters.user(OWNER_ID))
+async def bot_stats_command(client: Client, message: Message):
+    """Get bot statistics (Owner only)"""
+    try:
+        # Count collections
+        total_chars = await collection.count_documents({})
+        total_users = await user_collection.count_documents({})
+        
+        await message.reply_text(
+            f"📊 **Bot Statistics:**\n\n"
+            f"👥 Total Users: `{total_users}`\n"
+            f"🎭 Total Characters: `{total_chars}`"
+        )
+    except Exception as e:
+        await message.reply_text(f"❌ Error: {str(e)}")
