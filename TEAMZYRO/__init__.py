@@ -68,6 +68,8 @@ top_global_groups_collection = db['top_global_groups']
 pm_users = db['total_pm_users']
 discounts_collection = db['discounts']
 redeem_collection = db["redeem_codes"]  # Redeem codes collection
+# 🔥 ADD THIS LINE - Rarity limits collection
+rarity_limits_collection = db['rarity_limits']
 
 # -------------------------- GLOBAL VARIABLES ----------------------------
 app = ZYRO
@@ -164,6 +166,10 @@ async def initialize_database():
         await create_redeem_indexes()
         await create_user_collection_indexes()
         await create_character_collection_indexes()
+        
+        # 🔥 ADD THIS BLOCK - Initialize rarity limits with defaults if empty
+        from TEAMZYRO.unit.zyro_rarity import initialize_rarity_limits
+        await initialize_rarity_limits()
         
         LOGGER(__name__).info("✅ Database initialization complete")
         await PLOG("✅ **Database Initialization Complete**\nAll collections and indexes have been set up successfully.")
