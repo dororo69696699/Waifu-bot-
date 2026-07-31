@@ -1,4 +1,7 @@
-
+# ==========================================
+# Creator: MrZyro
+# Telegram: @MrZyro_dev
+# GitHub: https://github.com/MrZyro
 # ==========================================
 
 from pyrogram import Client, filters
@@ -7,6 +10,7 @@ import html
 from TEAMZYRO import *
 import asyncio
 from pyrogram import enums
+from TEAMZYRO.unit.zyro_rarity import rarity_map, rarity_map2
 
 async def get_user_stats(user_id):
     # Fetch user data
@@ -37,12 +41,16 @@ async def get_user_stats(user_id):
     total_users = len(all_users)
     rank = next((i + 1 for i, user in enumerate(all_users) if user['id'] == user_id), total_users)
     
-    # Count characters by rarity
+    # 🔥 FIX: Count characters by rarity dynamically using rarity_map
+    # Initialize all rarities with 0
     rarity_counts = {rarity: 0 for rarity in rarity_map.values()}
+    
+    # Count characters
     for char in characters:
-        rarity = char.get('rarity')
-        if rarity in rarity_counts:
-            rarity_counts[rarity] += 1
+        # Get the rarity from the character data
+        char_rarity = char.get('rarity')
+        if char_rarity and char_rarity in rarity_counts:
+            rarity_counts[char_rarity] += 1
     
     return {
         'user_id': user_id,
@@ -80,6 +88,23 @@ async def stats_handler(client: Client, message: Message):
     # Get rarity counts
     rarity_counts = stats['rarity_counts']
     
+    # 🔥 FIX: Build the stats dynamically with ALL rarities from rarity_map
+    # Get the emoji for each rarity
+    rarity_display = []
+    for rarity_name in rarity_map.values():
+        emoji = rarity_map2.get(rarity_name, '')
+        count = rarity_counts.get(rarity_name, 0)
+        # Format the display name without emoji for cleanliness
+        display_name = rarity_name.replace('⚪️ ', '').replace('🟣 ', '').replace('🟢 ', '').replace('🟡 ', '')
+        display_name = display_name.replace('💮 ', '').replace('🔮 ', '').replace('💸 ', '').replace('🌤 ', '')
+        display_name = display_name.replace('🎐 ', '').replace('❄️ ', '').replace('💝 ', '').replace('🎃 ', '')
+        display_name = display_name.replace('🎄 ', '').replace('🧧 ', '').replace('🍑 ', '').replace('🎗️ ', '')
+        display_name = display_name.replace('🌧 ', '').replace('🦠 ', '')
+        rarity_display.append(f"{emoji} <b>{display_name}</b>{' ' * (20 - len(display_name))}↬ {count}")
+    
+    # Join all rarity lines
+    rarity_lines = "\n".join(rarity_display)
+    
     # Build the stats caption with Shinobu theme
     stats_message = (
         f"🦋 <b>𝐒꯭𝒉꯭𝛊꯭𝒏꯭𝒐꯭𝒃꯭𝒖 𝐆𝐚𝐫𝐝𝐞𝐧</b>\n"
@@ -91,24 +116,7 @@ async def stats_handler(client: Client, message: Message):
         f"🏆 <b>𝐆𝐥𝐨𝐛𝐚𝐥 𝐑𝐚𝐧𝐤</b>     ↬ #{stats['rank']}\n\n"
         f"📈 <b>𝐂𝐨𝐦𝐩𝐥𝐞𝐭𝐢𝐨𝐧</b> ↬ {stats['progress_bar']} {stats['progress_percentage']:.1f}%\n"
         f"━━━━━━━━━━━━━━━━━━\n\n"
-        f"⚪ <b>Common</b>              ↬ {rarity_counts.get('Common', 0)}\n"
-        f"🟢 <b>Medium</b>              ↬ {rarity_counts.get('Medium', 0)}\n"
-        f"🟣 <b>Rare</b>                ↬ {rarity_counts.get('Rare', 0)}\n"
-        f"🟡 <b>Legendary</b>           ↬ {rarity_counts.get('Legendary', 0)}\n"
-        f"💮 <b>Special Edition</b>     ↬ {rarity_counts.get('Special Edition', 0)}\n"
-        f"🔮 <b>Limited Edition</b>     ↬ {rarity_counts.get('Limited Edition', 0)}\n"
-        f"💸 <b>Premium Edition</b>     ↬ {rarity_counts.get('Premium Edition', 0)}\n"
-        f"🌤 <b>Summer</b>              ↬ {rarity_counts.get('Summer', 0)}\n"
-        f"🎐 <b>Enchanted</b>          ↬ {rarity_counts.get('Enchanted', 0)}\n"
-        f"❄ <b>Frozen</b>             ↬ {rarity_counts.get('Frozen', 0)}\n"
-        f"💝 <b>Romance</b>           ↬ {rarity_counts.get('Romance', 0)}\n"
-        f"🎃 <b>Haunted</b>          ↬ {rarity_counts.get('Haunted', 0)}\n"
-        f"🎄 <b>Chrimsum</b>  ↬ {rarity_counts.get('Chrimsum', 0)}\n"
-        f"🧧 <b>Festive</b>              ↬ {rarity_counts.get('Festive', 0)}\n"
-        f"🍑 <b>Naughty</b>               ↬ {rarity_counts.get('Naughty', 0)}\n"
-        f"🎗 <b>AMV</b>            ↬ {rarity_counts.get('AMV', 0)}\n"
-        f"🌧 <b>Rainy</b>               ↬ {rarity_counts.get('Rainy', 0)}\n"
-        f"🦠 <b>Mythgard</b>         ↬ {rarity_counts.get('Mythgard', 0)}\n"
+        f"{rarity_lines}\n"
         f"━━━━━━━━━━━━━━━━━━\n\n"
         f"🌸\n"
         f"<i>\"Every butterfly eventually finds\n"
