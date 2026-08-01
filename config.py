@@ -1,48 +1,43 @@
-# ==========================================
-# Creator: MrZyro
-# Telegram: @MrZyro_dev
-# GitHub: https://github.com/MrZyro
-# ==========================================
-
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+# Load .env file if running locally
 load_dotenv()
 
 # Telegram API credentials
-api_id = os.getenv("API_ID", "")
-api_hash = os.getenv("API_HASH", "")
+API_ID = int(os.getenv("API_ID", "31963776"))
+API_HASH = os.getenv("API_HASH", "d352f599aff861566030a3cbba3a0f75")
 
-# Bot Token
-TOKEN = os.getenv("TOKEN", "")
+# Bot Token (Supports both BOT_TOKEN and TOKEN variable names)
+TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TOKEN") or "8988622858:AAHamrsZ_mCiTB4L950B7k7Y8QApzcWPDRc"
+BOT_TOKEN = TOKEN
 
-# Logging & Logs Channel
-BOT_LOGGING = os.getenv("BOT_LOGGING", "")
-DATABASE_ID = os.getenv("DATABASE_ID", "")
-FORCE_JOIN = os.getenv("FORCE_JOIN", "")
-CHARA_CHANNEL_ID = -1004305990907
+# Database Configuration
+MONGO_URL = os.getenv("MONGO_URL", "mongodb+srv://Egoist:jayesh1090@waifubot.jblumsy.mongodb.net/?appName=Waifubot")
+BACKUP_MONGO_URL = os.getenv("BACKUP_MONGO_URL", MONGO_URL)
+DB_NAME = os.getenv("DB_NAME", "waifucluster")
 
-# Database configuration
-mongo_url = os.getenv("MONGO_URL", "")
-backup_mongo_url = os.getenv("BACKUP_MONGO_URL", "")
-DB_NAME = os.getenv("DB_NAME", "WAIFUBOT")
+# Logging & Channels
+BOT_LOGGING = os.getenv("BOT_LOGGING", "@shinobuXwaifu")
+DATABASE_ID = int(os.getenv("DATABASE_ID", "-1004441358449"))
+FORCE_JOIN = int(os.getenv("FORCE_JOIN", "-1004153036996"))
+CHARA_CHANNEL_ID = int(os.getenv("CHARA_CHANNEL_ID", "-1004305990907"))
 
-# Channels & Chats
-SUPPORT_CHAT = os.getenv("SUPPORT_CHAT", "")
-UPDATE_CHAT = os.getenv("UPDATE_CHAT", "")
-MUSJ_JOIN = os.getenv("MUSJ_JOIN", "")
+# Links & Community
+SUPPORT_CHAT = os.getenv("SUPPORT_CHAT", "https://t.me/shinobuXcastel")
+UPDATE_CHAT = os.getenv("UPDATE_CHAT", "https://t.me/+jyTbGn6JTeQ3M2M1")
+MUSJ_JOIN = os.getenv("MUSJ_JOIN", "https://t.me/DemonXwaifu")
 
-# Admin user configurations
-OWNER_ID = int(os.getenv("OWNER_ID", "0"))
+# Admin Users
+OWNER_ID = int(os.getenv("OWNER_ID", "7974236970"))
 
-# ImgBB API Key
-IMGBB_API_KEY = os.getenv("IMGBB_API_KEY", "")
+# ImgBB Key
+IMGBB_API_KEY = os.getenv("IMGBB_API_KEY", "550ead1e90c77896dbc4baf9703ac3a7")
 
-# Media Configurations
+# Media Resources
 START_MEDIA = [
     os.getenv("START_MEDIA_1", "https://files.catbox.moe/5zrb1a.mp4"),
-    os.getenv("START_MEDIA_1","https://files.catbox.moe/5zrb1a.mp4")
+    os.getenv("START_MEDIA_2", "https://files.catbox.moe/5zrb1a.mp4")
 ]
 
 PHOTO_URL = [
@@ -53,4 +48,3 @@ PHOTO_URL = [
 STATS_IMG = [
     os.getenv("STATS_IMG", "https://files.catbox.moe/gknnju.jpg")
 ]
-
