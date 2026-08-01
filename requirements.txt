@@ -3,6 +3,7 @@ aiohttp
 requests
 python-telegram-bot==20.6
 pymongo
+TgCrypto
 pyrate-limiter==3.1.0
 apscheduler==3.6.3
 httpx[http2]
