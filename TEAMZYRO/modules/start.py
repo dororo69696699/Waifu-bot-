@@ -1,14 +1,12 @@
-
 import os
-import importlib.util
 import random
 import time
-from pyrogram import Client, filters, enums
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from TEAMZYRO import *
-from TEAMZYRO.unit.zyro_help import HELP_DATA  
+from pyrogram import Client, enums, filters
+from pyrogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 
-# 🔹 Function to Calculate Uptime
+from TEAMZYRO import *
+from TEAMZYRO.unit.zyro_help import HELP_DATA
+
 START_TIME = time.time()
 
 def get_uptime():
@@ -17,13 +15,13 @@ def get_uptime():
     minutes, seconds = divmod(remainder, 60)
     return f"{hours}h {minutes}m {seconds}s"
 
-# START_MEDIA is imported from TEAMZYRO package
-
-# 🔹 Function to Generate Private Start Message & Buttons (Shinobu Custom Design)
+# Private Start Message Generator
 async def generate_start_message(client, message):
     bot_user = await client.get_me()
     bot_name = bot_user.first_name
-    ping = round(time.time() - message.date.timestamp(), 2)
+    
+    msg_date = getattr(message, "date", None)
+    ping = round(time.time() - msg_date.timestamp(), 2) if msg_date else 0.0
     uptime = get_uptime()
 
     caption = (
@@ -45,13 +43,13 @@ async def generate_start_message(client, message):
         ],
         [
             InlineKeyboardButton("🧪 ʜᴇʟᴘ", callback_data="open_help"),
-            InlineKeyboardButton("👤 ᴏᴡɴᴇʀ", url=f"https://t.me/EGOIST_6969")
+            InlineKeyboardButton("👤 ᴏᴡɴᴇʀ", url="https://t.me/EGOIST_6969")
         ]
     ]
 
     return caption, buttons
 
-# 🔹 Function to Generate Group Start Message & Buttons (Shinobu Custom Design)
+# Group Start Message Generator
 async def generate_group_start_message(client):
     bot_user = await client.get_me()
     caption = (
@@ -67,7 +65,7 @@ async def generate_group_start_message(client):
     ]
     return caption, buttons
 
-# 🔹 Send Media (Helper)
+# Send Media Helper
 async def send_media_message(message, media, caption, buttons):
     if media.lower().endswith(('.png', '.jpg', '.jpeg')):
         await message.reply_photo(photo=media, caption=caption, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.HTML)
@@ -76,7 +74,7 @@ async def send_media_message(message, media, caption, buttons):
     else:
         await message.reply_video(video=media, caption=caption, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.HTML)
 
-# 🔹 Private Start Command Handler
+# Private Start Command Handler
 @app.on_message(filters.command("start") & filters.private)
 async def start_private_command(client, message):
     existing_user = await user_collection.find_one({"id": message.from_user.id})
@@ -92,23 +90,30 @@ async def start_private_command(client, message):
         await user_collection.insert_one(user_data)
 
     caption, buttons = await generate_start_message(client, message)
-    media = random.choice(START_MEDIA)
+    
+    start_media_list = globals().get("START_MEDIA", [])
+    media = random.choice(start_media_list) if start_media_list else "https://telegra.ph/file/default.jpg"
 
-    await app.send_message(
-        chat_id=BOT_LOGGING,
-        text=f"{message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ ᴛᴏ ᴄʜᴇᴄᴋ <b>ʙᴜᴛᴛᴇʀғʟʏ ᴍᴀɴsɪᴏɴ</b>.\n\n<b>ᴜsᴇʀ ɪᴅ :</b> <code>{message.from_user.id}</code>\n<b>ᴜsᴇʀɴᴀᴍᴇ :</b> @{message.from_user.username}",
-    )
+    bot_logging_id = globals().get("BOT_LOGGING", None)
+    if bot_logging_id:
+        try:
+            await app.send_message(
+                chat_id=bot_logging_id,
+                text=f"{message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ ᴛᴏ ᴄʜᴇᴄᴋ <b>ʙᴜᴛᴛᴇʀғʟʏ ᴍᴀɴsɪᴏɴ</b>.\n\n<b>ᴜsᴇʀ ɪᴅ :</b> <code>{message.from_user.id}</code>\n<b>ᴜsᴇʀɴᴀᴍᴇ :</b> @{message.from_user.username}",
+            )
+        except Exception:
+            pass
 
     await send_media_message(message, media, caption, buttons)
 
-# 🔹 Group Start Command Handler
+# Group Start Command Handler
 @app.on_message(filters.command("start") & filters.group)
 async def start_group_command(client, message):
     caption, buttons = await generate_group_start_message(client)
-    media = random.choice(START_MEDIA)
+    start_media_list = globals().get("START_MEDIA", [])
+    media = random.choice(start_media_list) if start_media_list else "https://telegra.ph/file/default.jpg"
     await send_media_message(message, media, caption, buttons)
 
-# 🔹 Function to Find Help Modules
 def find_help_modules():
     buttons = []
     for module_name, module_data in HELP_DATA.items():
@@ -117,12 +122,11 @@ def find_help_modules():
             f"📋 {button_name}",
             callback_data=f"help_{module_name}"
         ))
-    return [buttons[i : i + 2] for i in range(0, len(buttons), 2)]  # Changed to 2 columns for better balance
+    return [buttons[i : i + 2] for i in range(0, len(buttons), 2)]
 
-# 🔹 Help Button Click Handler (Shinobu Custom Design)
+# Help Menu Callback
 @app.on_callback_query(filters.regex("^open_help$"))
 async def show_help_menu(client, query: CallbackQuery):
-    time.sleep(1)
     buttons = find_help_modules()
     buttons.append([InlineKeyboardButton(
         "⬅️ ʀᴇᴛᴜʀɴ ᴛᴏ ᴍᴀɴsɪᴏɴ",
@@ -148,10 +152,9 @@ async def show_help_menu(client, query: CallbackQuery):
             parse_mode=enums.ParseMode.HTML
         )
 
-# 🔹 Individual Module Help Handler
+# Module Help Callback
 @app.on_callback_query(filters.regex(r"^help_(.+)"))
 async def show_help(client, query: CallbackQuery):
-    time.sleep(1)
     module_name = query.data.split("_", 1)[1]
     try:
         module_data = HELP_DATA.get(module_name, {})
@@ -178,13 +181,12 @@ async def show_help(client, query: CallbackQuery):
                 reply_markup=InlineKeyboardMarkup(buttons),
                 parse_mode=enums.ParseMode.HTML
             )
-    except Exception as e:
-        await query.answer("ᴀɴᴛɪᴅᴏᴛᴇ ʟᴏɢs ᴄᴏᴜʟᴅ ɴᴏᴛ ʙᴇ ʟᴏᴀᴅᴇᴅ ᴘʀᴏᴘᴇʀʟʏ!")
+    except Exception:
+        await query.answer("ᴀɴᴛɪᴅᴏᴛᴇ ʟᴏɢs ᴄᴏᴜʟᴅ ɴᴏᴛ ʙᴇ ʟᴏᴀᴅᴇᴅ ᴘʀᴏᴘᴇʀʟʏ!", show_alert=True)
 
-# 🔹 Back to Home
+# Return to Home Callback
 @app.on_callback_query(filters.regex("^back_to_home$"))
 async def back_to_home(client, query: CallbackQuery):
-    time.sleep(1)
     caption, buttons = await generate_start_message(client, query.message)
     try:
         await query.message.edit_caption(
