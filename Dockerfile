@@ -1,21 +1,23 @@
-FROM python:3.8.5-slim-buster
+FROM python:3.9-slim
 
 ENV PIP_NO_CACHE_DIR=1
+ENV PYTHONUNBUFFERED=1
 
-# Install git and other needed tools
-RUN apt-get update && apt-get install -y git gcc && apt-get clean
+# Install dependencies required for TgCrypto and other packages
+RUN apt-get update && apt-get install -y \
+    git \
+    gcc \
+    g++ \
+    build-essential \
+    python3-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip and setuptools
-RUN pip3 install --upgrade pip setuptools
+WORKDIR /app
 
-# Copy application code
-COPY . /app/
+COPY . .
 
-# Set working directory
-WORKDIR /app/
+RUN pip install --upgrade pip setuptools wheel
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Python dependencies
-RUN pip3 install --no-cache-dir -U -r requirements.txt
-
-# Run the bot
-CMD ["python3", "-m", "TEAMZYRO"]
+CMD ["python", "-m", "TEAMZYRO"]
