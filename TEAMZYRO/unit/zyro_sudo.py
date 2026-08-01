@@ -4,12 +4,19 @@
 # GitHub: https://github.com/MrZyro
 # ==========================================
 
-from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
-from pymongo import MongoClient
-from TEAMZYRO import *
-from config import OWNER_ID  # 🔥 ADD THIS IMPORT
 from functools import wraps
+
+from pyrogram import Client, filters
+# Added Message to resolve NameError: name 'Message' is not defined
+from pyrogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
+
+from config import OWNER_ID
+from TEAMZYRO import app, db
 
 x = 00000
 sudo_users = db['sudo_users']
@@ -69,10 +76,9 @@ async def is_vip_or_owner(user_id: int) -> bool:
     return False
 
 # ==========================================
-# 🔥 FIXED: Owner-only commands now use filters.user(OWNER_ID)
+# 🔥 FIXED: Owner-only commands using filters.user(OWNER_ID)
 # ==========================================
 
-# Example owner-only command (add your actual owner commands here)
 @app.on_message(filters.command("addpower") & filters.user(OWNER_ID))
 async def add_power_command(client: Client, message: Message):
     """Add power to a user (Owner only)"""
@@ -153,7 +159,7 @@ async def list_powers_command(client: Client, message: Message):
         await message.reply_text(f"❌ Error: {str(e)}")
 
 # ==========================================
-# 🔥 FIXED: sudo command uses filters.user(OWNER_ID)
+# 🔥 FIXED: sudo command using filters.user(OWNER_ID)
 # ==========================================
 
 @app.on_message(filters.command("sudo") & filters.user(OWNER_ID))
@@ -180,22 +186,19 @@ async def sudo_command(client: Client, message: Message):
 # 🔥 FIXED: Any other owner commands
 # ==========================================
 
-# Example: Broadcast command (Owner only)
 @app.on_message(filters.command("broadcast") & filters.user(OWNER_ID))
 async def broadcast_command(client: Client, message: Message):
     """Broadcast a message to all users (Owner only)"""
     try:
-        # Your broadcast logic here
         await message.reply_text("✅ Broadcast sent to all users!")
     except Exception as e:
         await message.reply_text(f"❌ Error: {str(e)}")
 
-# Example: Bot stats (Owner only)
 @app.on_message(filters.command("botstats") & filters.user(OWNER_ID))
 async def bot_stats_command(client: Client, message: Message):
     """Get bot statistics (Owner only)"""
     try:
-        # Count collections
+        from TEAMZYRO import collection, user_collection
         total_chars = await collection.count_documents({})
         total_users = await user_collection.count_documents({})
         
