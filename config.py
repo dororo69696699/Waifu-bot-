@@ -27,6 +27,7 @@ CHARA_CHANNEL_ID = int(os.getenv("CHARA_CHANNEL_ID", "-1004305990907"))
 SUPPORT_CHAT = os.getenv("SUPPORT_CHAT", "https://t.me/shinobuXcastel")
 UPDATE_CHAT = os.getenv("UPDATE_CHAT", "https://t.me/+jyTbGn6JTeQ3M2M1")
 MUSJ_JOIN = os.getenv("MUSJ_JOIN", "https://t.me/DemonXwaifu")
+MUST_JOIN = os.getenv("MUST_JOIN", "https://t.me/DemonXwaifu")
 
 # Admin Users
 OWNER_ID = int(os.getenv("OWNER_ID", "7974236970"))
