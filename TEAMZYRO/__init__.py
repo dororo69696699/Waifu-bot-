@@ -38,7 +38,7 @@ def LOGGER(name: str) -> logging.Logger:
 # ---------------------------- CONFIGURATION -----------------------------
 import config
 
-# Helper to safely retrieve config attributes regardless of case or slight typos
+# Helper function to safely fetch attributes regardless of typo/case variations
 def get_config_var(*names, default=None):
     for name in names:
         if hasattr(config, name):
@@ -57,7 +57,10 @@ DB_NAME = get_config_var("DB_NAME", "db_name")
 SUPPORT_CHAT = get_config_var("SUPPORT_CHAT", "support_chat")
 UPDATE_CHAT = get_config_var("UPDATE_CHAT", "update_chat")
 OWNER_ID = get_config_var("OWNER_ID", "owner_id")
-MUST_JOIN = get_config_var("MUST_JOIN", "MUST_JOIN", "MUSJ_JOIN", "musj_join", "must_join")
+
+# Handled your 'musj' typo here safely:
+MUST_JOIN = get_config_var("MUSJ_JOIN", "musj_join", "MUST_JOIN", "must_join")
+
 IMGBB_API_KEY = get_config_var("IMGBB_API_KEY", "imgbb_api_key")
 START_MEDIA = get_config_var("START_MEDIA", "start_media")
 PHOTO_URL = get_config_var("PHOTO_URL", "photo_url")
