@@ -1,167 +1,116 @@
+# ==========================================
+# Creator: MrZyro
+# Telegram: @MrZyro_dev
+# GitHub: https://github.com/MrZyro
+# Rewritten with Clean Architecture
+# ==========================================
+
+"""
+TEAMZYRO Package - Waifu Bot
+
+This package contains all bot modules organized by functionality.
+"""
+
 import logging
-import os
-import sys
-import asyncio
-from telegram.ext import Application
-from motor.motor_asyncio import AsyncIOMotorClient
-from pyrogram import Client, filters as f
-from aiogram import Bot, Dispatcher, types
-from pyrogram import enums
+from typing import Optional
 
-# --------------------------- LOGGING SETUP ------------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(asctime)s - %(levelname)s] - %(name)s - %(message)s",
-    datefmt="%d-%b-%y %H:%M:%S",
-    handlers=[
-        logging.FileHandler("log.txt"),
-        logging.StreamHandler(),
-    ],
-)
+# Package version
+__version__ = "2.0.0"
+__author__ = "MrZyro"
+__repo__ = "https://github.com/MrZyro"
 
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("pyrogram").setLevel(logging.ERROR)
-logging.getLogger("telegram").setLevel(logging.ERROR)
+# Configure package logger
+logger = logging.getLogger(__name__)
 
-def LOGGER(name: str) -> logging.Logger:
-    return logging.getLogger(name)
+# Export main components
+from app.core.config import Config, get_config
+from app.database.manager import DatabaseManager
+from app.bot import create_bot, create_dispatcher
 
-# ---------------------------- CONFIGURATION -----------------------------
-from config import (
-    api_id, api_hash, TOKEN, BOT_LOGGING, DATABASE_ID, FORCE_JOIN,
-    mongo_url, backup_mongo_url, DB_NAME, SUPPORT_CHAT, UPDATE_CHAT, OWNER_ID,
-    MUSJ_JOIN, IMGBB_API_KEY, START_MEDIA, PHOTO_URL, STATS_IMG, CHARA_CHANNEL_ID
-) 
+# Package exports
+__all__ = [
+    "Config",
+    "get_config",
+    "DatabaseManager",
+    "create_bot",
+    "create_dispatcher",
+    "__version__",
+    "__author__",
+    "__repo__",
+]
 
-# Validation check
-if not TOKEN or TOKEN.strip() == "" or "Botfather" in TOKEN:
-    logging.error("❌ [CRITICAL] BOT_TOKEN IS EMPTY OR INVALID INSIDE CONFIG.PY / ENV!")
-    print("\n🦋 Ara ara~ Host engine initialization aborted!")
-    print("⚠️  The 'TOKEN' variable is missing or blank inside your configuration file.")
-    print("👉 Please edit your config file or platform environment variables and insert a valid token from @BotFather.\n")
-    sys.exit(1)
-
-FORCE_JOIN_LINK = "https://t.me/+fPjchISAGnc3OGJl"
-
-# --------------------- TELEGRAM BOT CONFIGURATION -----------------------
-command_filter = f.create(lambda _, __, message: message.text and message.text.startswith("/"))
-application = Application.builder().token(TOKEN).build()
-ZYRO = Client("Shivu", api_id=api_id, api_hash=api_hash, bot_token=TOKEN)
-bot = Bot(token=TOKEN)
-dp = Dispatcher()
-
-# -------------------------- DATABASE SETUP ------------------------------
-ddw = AsyncIOMotorClient(mongo_url)
-db = ddw[DB_NAME]
-collection = db['anime_characters_lol']
-user_totals_collection = db['user_totals_lmaoooo']
-user_collection = db["user_collection_lmaoooo"]
-group_user_totals_collection = db['group_user_totalsssssss']
-top_global_groups_collection = db['top_global_groups']
-pm_users = db['total_pm_users']
-discounts_collection = db['discounts']
-redeem_collection = db["redeem_codes"]
-
-backup_ddw = AsyncIOMotorClient(backup_mongo_url)
-
-# -------------------------- GLOBAL VARIABLES ----------------------------
-app = ZYRO
-x = 0000000
-
-# --------------------------- STORAGE DICTS ------------------------------
-locks = {}
-message_counters = {}
-spam_counters = {}
-last_characters = {}
-sent_characters = {}
-first_correct_guesses = {}
-message_counts = {}
-last_user = {}
-warned_users = {}
-user_cooldowns = {}
-user_nguess_progress = {}
-user_guess_progress = {}
-normal_message_counts = {}  
-
-# -------------------------- POWER SETUP --------------------------------
-from TEAMZYRO.unit.zyro_ban import *
-from TEAMZYRO.unit.zyro_sudo import *
-from TEAMZYRO.unit.zyro_react import *
-from TEAMZYRO.unit.zyro_log import *
-from TEAMZYRO.unit.zyro_send_img import *
-from TEAMZYRO.unit.zyro_rarity import *
-# ------------------------------------------------------------------------
-
-async def PLOG(text: str):
-    await app.send_message(
-       chat_id=BOT_LOGGING,
-       text=f"🦋 <b>[LAB LOG]:</b>\n{text}",
-       parse_mode=enums.ParseMode.HTML
-   )
-
-# ==========================================
-# DATABASE INITIALIZATION & INDEXES
-# ==========================================
-
-async def create_redeem_indexes():
-    """Create indexes for redeem codes collection for better performance."""
-    try:
-        await redeem_collection.create_index("code", unique=True)
-        await redeem_collection.create_index("is_active")
-        await redeem_collection.create_index("creator_id")
-        await redeem_collection.create_index("redeemed_count")
-        await redeem_collection.create_index("reward_type")
-        await redeem_collection.create_index("created_at", expireAfterSeconds=2592000)
-        LOGGER(__name__).info("✅ Redeem collection indexes created successfully")
-    except Exception as e:
-        LOGGER(__name__).error(f"❌ Error creating redeem indexes: {e}")
-
-async def create_user_collection_indexes():
-    """Create indexes for user collection for better performance."""
-    try:
-        await user_collection.create_index("id", unique=True)
-        await user_collection.create_index("username")
-        await user_collection.create_index("characters")
-        LOGGER(__name__).info("✅ User collection indexes created successfully")
-    except Exception as e:
-        LOGGER(__name__).error(f"❌ Error creating user collection indexes: {e}")
-
-async def create_character_collection_indexes():
-    """Create indexes for character collection for better performance."""
-    try:
-        await collection.create_index("id", unique=True)
-        await collection.create_index("anime")
-        await collection.create_index("rarity")
-        await collection.create_index([("anime", 1), ("rarity", 1)])
-        LOGGER(__name__).info("✅ Character collection indexes created successfully")
-    except Exception as e:
-        LOGGER(__name__).error(f"❌ Error creating character collection indexes: {e}")
-
-async def initialize_database():
-    """Initialize all database collections and indexes."""
-    try:
-        LOGGER(__name__).info("🔄 Initializing database collections...")
-        await create_redeem_indexes()
-        await create_user_collection_indexes()
-        await create_character_collection_indexes()
+# Lazy imports for backward compatibility
+# This allows old code to still work with `from TEAMZYRO import *`
+class _LazyModule:
+    """Lazy loader for backward compatibility with old import patterns."""
+    
+    def __init__(self):
+        self._modules = {}
+    
+    def __getattr__(self, name):
+        # Don't intercept special attributes
+        if name.startswith("_"):
+            raise AttributeError(f"'{name}' not found")
         
-        LOGGER(__name__).info("✅ Database initialization complete")
-        await PLOG("✅ **Database Initialization Complete**\nAll collections and indexes have been set up successfully.")
-    except Exception as e:
-        LOGGER(__name__).error(f"❌ Database initialization error: {e}")
-        await PLOG(f"❌ **Database Initialization Failed**\nError: `{str(e)}`")
+        # Map old module names to new locations
+        module_map = {
+            # Old import -> New location
+            "LOGGER": "app.core.logging.get_logger",
+            "ZYRO": "app.bot.create_bot",
+            "application": "app.bot.create_application",
+            "bot": "app.bot.create_bot",
+            "dp": "app.bot.create_dispatcher",
+            "collection": "app.database.repositories.character",
+            "user_collection": "app.database.repositories.user",
+            "user_totals_collection": "app.database.repositories.stats",
+            "group_user_totals_collection": "app.database.repositories.group_stats",
+            "top_global_groups_collection": "app.database.repositories.top_groups",
+            "pm_users": "app.database.repositories.pm_users",
+            "discounts_collection": "app.database.repositories.discounts",
+            "redeem_collection": "app.database.repositories.redeem",
+        }
+        
+        if name in module_map:
+            new_path = module_map[name]
+            logger.warning(f"⚠️ Deprecated import: 'from TEAMZYRO import {name}' "
+                          f"→ Use 'from {new_path}' instead")
+            return self._import_module(new_path)
+        
+        # If not in map, raise error
+        raise AttributeError(
+            f"'{name}' is not a valid import from TEAMZYRO. "
+            f"Please check the new module structure."
+        )
+    
+    def _import_module(self, path):
+        """Import a module dynamically."""
+        if path in self._modules:
+            return self._modules[path]
+        
+        parts = path.split('.')
+        module_name = '.'.join(parts[:-1])
+        attr_name = parts[-1]
+        
+        try:
+            module = __import__(module_name, fromlist=[attr_name])
+            obj = getattr(module, attr_name)
+            self._modules[path] = obj
+            return obj
+        except (ImportError, AttributeError) as e:
+            logger.error(f"Failed to import {path}: {e}")
+            return None
 
-# ==========================================
-# BOT STARTUP HANDLER
-# ==========================================
 
-async def on_startup():
-    """Function to run when bot starts."""
-    LOGGER(__name__).info("🦋 Bot is starting up...")
-    await initialize_database()
-    await PLOG(
-        f"🦋 **Bot Started Successfully**\n"
-        f"👤 **Owner:** `{OWNER_ID}`\n"
-        f"📅 **Time:** {__import__('datetime').datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
-    )
-    LOGGER(__name__).info("✅ Bot startup complete")
+# Allow `from TEAMZYRO import *` to work with deprecation warnings
+import sys
+sys.modules[__name__] = _LazyModule()
+
+
+# Clean package initialization
+def init_package() -> None:
+    """
+    Initialize the TEAMZYRO package.
+    This is called when the package is first imported.
+    """
+    # Configure logging for the package
+    logging.getLogger(__name__).info("🦋 TEAMZYRO Package initialized (v2.0.0)")
