@@ -1,4 +1,4 @@
- ==========================================
+ 
 
 """
 Main entry point for the Waifu Bot.
