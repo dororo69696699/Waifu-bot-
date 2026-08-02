@@ -5,25 +5,23 @@
 # ==========================================
 
 # ------------------------------ IMPORTS ---------------------------------
-import asyncio
 import logging
 import os
 import sys
-from datetime import datetime, timezone
-
-from aiogram import Bot, Dispatcher, types
-from motor.motor_asyncio import AsyncIOMotorClient
-from pyrogram import Client, enums
-from pyrogram import filters as f
+import asyncio
 from telegram.ext import Application
+from motor.motor_asyncio import AsyncIOMotorClient
+from pyrogram import Client, filters as f
+from aiogram import Bot, Dispatcher, types
+from pyrogram import enums
 
 # --------------------------- LOGGING SETUP ------------------------------
+# Removed FileHandler("log.txt") to fix Railway shutdown crashes
 logging.basicConfig(
     level=logging.INFO,
     format="[%(asctime)s - %(levelname)s] - %(name)s - %(message)s",
     datefmt="%d-%b-%y %H:%M:%S",
     handlers=[
-        logging.FileHandler("log.txt"),
         logging.StreamHandler(),
     ],
 )
@@ -36,69 +34,44 @@ def LOGGER(name: str) -> logging.Logger:
     return logging.getLogger(name)
 
 # ---------------------------- CONFIGURATION -----------------------------
-import config
-
-# Helper function to safely fetch attributes regardless of typo/case variations
-def get_config_var(*names, default=None):
-    for name in names:
-        if hasattr(config, name):
-            return getattr(config, name)
-    return default
-
-API_ID = get_config_var("API_ID", "api_id")
-API_HASH = get_config_var("API_HASH", "api_hash")
-TOKEN = get_config_var("TOKEN", "token", "BOT_TOKEN")
-BOT_LOGGING = get_config_var("BOT_LOGGING", "bot_logging")
-DATABASE_ID = get_config_var("DATABASE_ID", "database_id")
-FORCE_JOIN = get_config_var("FORCE_JOIN", "force_join")
-MONGO_URL = get_config_var("MONGO_URL", "mongo_url")
-BACKUP_MONGO_URL = get_config_var("BACKUP_MONGO_URL", "backup_mongo_url")
-DB_NAME = get_config_var("DB_NAME", "db_name")
-SUPPORT_CHAT = get_config_var("SUPPORT_CHAT", "support_chat")
-UPDATE_CHAT = get_config_var("UPDATE_CHAT", "update_chat")
-OWNER_ID = get_config_var("OWNER_ID", "owner_id")
-
-# Handled your 'musj' typo here safely:
-MUST_JOIN = get_config_var("MUSJ_JOIN", "musj_join", "MUST_JOIN", "must_join")
-
-IMGBB_API_KEY = get_config_var("IMGBB_API_KEY", "imgbb_api_key")
-START_MEDIA = get_config_var("START_MEDIA", "start_media")
-PHOTO_URL = get_config_var("PHOTO_URL", "photo_url")
-STATS_IMG = get_config_var("STATS_IMG", "stats_img")
-CHARA_CHANNEL_ID = get_config_var("CHARA_CHANNEL_ID", "chara_channel_id")
+from config import (
+    api_id, api_hash, TOKEN, BOT_LOGGING, DATABASE_ID, FORCE_JOIN,
+    mongo_url, backup_mongo_url, DB_NAME, SUPPORT_CHAT, UPDATE_CHAT, OWNER_ID,
+    MUSJ_JOIN, IMGBB_API_KEY, START_MEDIA, PHOTO_URL, STATS_IMG, CHARA_CHANNEL_ID
+) 
 
 # 🧪 CRITICAL TOKEN VALIDATION CHECK
-if not TOKEN or str(TOKEN).strip() == "" or "Botfather" in str(TOKEN):
-    logging.error("❌ [CRITICAL] BOT_TOKEN IS EMPTY OR INVALID INSIDE CONFIG.PY / ENV!")
-    print("\n🦋 Ara ara~ Host engine initialization aborted!")
-    print("⚠️  The 'TOKEN' variable is missing or blank inside your configuration file.")
-    print("👉 Please edit your config file or platform environment variables and insert a valid token from @BotFather.\n")
+if not TOKEN or not isinstance(TOKEN, str) or TOKEN.strip() == "" or "Botfather" in TOKEN:
+    logging.error("❌ [CRITICAL] BOT_TOKEN IS EMPTY OR INVALID INSIDE CONFIG.PY / RAILWAY VARIABLES!")
+    print("\n⚠️  The 'TOKEN' variable is missing or blank inside your platform environment variables.")
+    print("👉 Please add 'TOKEN' in Railway Environment Variables.\n")
     sys.exit(1)
 
-FORCE_JOIN_LINK = "https://t.me/+fPjchISAGnc3OGJl"
+FORCE_JOIN_LINK = "https://t.me/+fPjchISAGnc3OGJl"  # Updated dynamically on bot startup
 
 # --------------------- TELEGRAM BOT CONFIGURATION -----------------------
-command_filter = f.create(lambda _, __, message: bool(message.text and message.text.startswith("/")))
-
+command_filter = f.create(lambda _, __, message: message.text and message.text.startswith("/"))
 application = Application.builder().token(TOKEN).build()
-ZYRO = Client("Shivu", api_id=API_ID, api_hash=API_HASH, bot_token=TOKEN)
+ZYRO = Client("Shivu", api_id=api_id, api_hash=api_hash, bot_token=TOKEN)
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 # -------------------------- DATABASE SETUP ------------------------------
-ddw = AsyncIOMotorClient(MONGO_URL)
-db = ddw[DB_NAME]
-
-collection = db['anime_characters_lol']
-user_totals_collection = db['user_totals_lmaoooo']
-user_collection = db["user_collection_lmaoooo"]
-group_user_totals_collection = db['group_user_totalsssssss']
-top_global_groups_collection = db['top_global_groups']
-pm_users = db['total_pm_users']
-discounts_collection = db['discounts']
-redeem_collection = db["redeem_codes"]
-
-backup_ddw = AsyncIOMotorClient(BACKUP_MONGO_URL) if BACKUP_MONGO_URL else None
+ddw = AsyncIOMotorClient(mongo_url) if mongo_url else None
+if ddw:
+    db = ddw[DB_NAME]
+    collection = db['anime_characters_lol']
+    user_totals_collection = db['user_totals_lmaoooo']
+    user_collection = db["user_collection_lmaoooo"]
+    group_user_totals_collection = db['group_user_totalsssssss']
+    top_global_groups_collection = db['top_global_groups']
+    pm_users = db['total_pm_users']
+    discounts_collection = db['discounts']
+    redeem_collection = db["redeem_codes"]
+else:
+    db = collection = user_totals_collection = user_collection = None
+    group_user_totals_collection = top_global_groups_collection = pm_users = None
+    discounts_collection = redeem_collection = None
 
 # -------------------------- GLOBAL VARIABLES ----------------------------
 app = ZYRO
@@ -120,37 +93,33 @@ user_guess_progress = {}
 normal_message_counts = {}  
 
 # -------------------------- POWER SETUP --------------------------------
-try:
-    from TEAMZYRO.unit import (
-        zyro_ban,
-        zyro_sudo,
-        zyro_react,
-        zyro_log,
-        zyro_send_img,
-        zyro_rarity,
-    )
-except ImportError as err:
-    LOGGER(__name__).warning(f"⚠️ Non-critical module import warning: {err}")
-
+from TEAMZYRO.unit.zyro_ban import *
+from TEAMZYRO.unit.zyro_sudo import *
+from TEAMZYRO.unit.zyro_react import *
+from TEAMZYRO.unit.zyro_log import *
+from TEAMZYRO.unit.zyro_send_img import *
+from TEAMZYRO.unit.zyro_rarity import *
 # ------------------------------------------------------------------------
 
 async def PLOG(text: str):
-    """Send log messages to the logging channel."""
+    if not BOT_LOGGING:
+        return
     try:
         await app.send_message(
-            chat_id=BOT_LOGGING,
-            text=f"🦋 <b>[LAB LOG]:</b>\n{text}",
-            parse_mode=enums.ParseMode.HTML
-        )
+           chat_id=BOT_LOGGING,
+           text=f"🦋 <b>[LAB LOG]:</b>\n{text}",
+           parse_mode=enums.ParseMode.HTML
+       )
     except Exception as e:
-        LOGGER(__name__).error(f"Failed to send log message: {e}")
+        LOGGER(__name__).warning(f"Failed to post to PLOG: {e}")
 
 # ==========================================
 # DATABASE INITIALIZATION & INDEXES
 # ==========================================
 
 async def create_redeem_indexes():
-    """Create indexes for redeem codes collection."""
+    if not redeem_collection:
+        return
     try:
         await redeem_collection.create_index("code", unique=True)
         await redeem_collection.create_index("is_active")
@@ -163,7 +132,8 @@ async def create_redeem_indexes():
         LOGGER(__name__).error(f"❌ Error creating redeem indexes: {e}")
 
 async def create_user_collection_indexes():
-    """Create indexes for user collection."""
+    if not user_collection:
+        return
     try:
         await user_collection.create_index("id", unique=True)
         await user_collection.create_index("username")
@@ -173,7 +143,8 @@ async def create_user_collection_indexes():
         LOGGER(__name__).error(f"❌ Error creating user collection indexes: {e}")
 
 async def create_character_collection_indexes():
-    """Create indexes for character collection."""
+    if not collection:
+        return
     try:
         await collection.create_index("id", unique=True)
         await collection.create_index("anime")
@@ -184,19 +155,16 @@ async def create_character_collection_indexes():
         LOGGER(__name__).error(f"❌ Error creating character collection indexes: {e}")
 
 async def initialize_database():
-    """Initialize all database collections and indexes."""
+    if not ddw:
+        LOGGER(__name__).warning("⚠️ MONGO_URL not set. Skipping database initialization.")
+        return
     try:
         LOGGER(__name__).info("🔄 Initializing database collections...")
-        
-        await asyncio.gather(
-            create_redeem_indexes(),
-            create_user_collection_indexes(),
-            create_character_collection_indexes()
-        )
-        
+        await create_redeem_indexes()
+        await create_user_collection_indexes()
+        await create_character_collection_indexes()
         LOGGER(__name__).info("✅ Database initialization complete")
         await PLOG("✅ **Database Initialization Complete**\nAll collections and indexes have been set up successfully.")
-        
     except Exception as e:
         LOGGER(__name__).error(f"❌ Database initialization error: {e}")
         await PLOG(f"❌ **Database Initialization Failed**\nError: `{str(e)}`")
@@ -206,19 +174,13 @@ async def initialize_database():
 # ==========================================
 
 async def on_startup():
-    """Function to run when bot starts."""
     LOGGER(__name__).info("🦋 Bot is starting up...")
-    
     await initialize_database()
-    
-    current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-    
     await PLOG(
         f"🦋 **Bot Started Successfully**\n"
         f"👤 **Owner:** `{OWNER_ID}`\n"
-        f"📅 **Time:** {current_time} UTC"
+        f"📅 **Time:** {__import__('datetime').datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
     )
-    
     LOGGER(__name__).info("✅ Bot startup complete")
 
-# ---------------------------- END OF CODE ------------------------------
+backup_ddw = AsyncIOMotorClient(backup_mongo_url) if backup_mongo_url else None
