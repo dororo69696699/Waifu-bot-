@@ -4,19 +4,12 @@
 # GitHub: https://github.com/MrZyro
 # ==========================================
 
-import asyncio
+from TEAMZYRO import *
 import importlib
 import logging
+import asyncio
 import sys
-
-from TEAMZYRO import *
 from TEAMZYRO.modules import ALL_MODULES
-
-# Safe fallback imports in case MUST_JOIN/FORCE_JOIN are named differently in config
-try:
-    from config import MUST_JOIN
-except ImportError:
-    MUST_JOIN = getattr(sys.modules[__name__], "FORCE_JOIN", None)
 
 
 async def initialize_bot():
@@ -25,15 +18,14 @@ async def initialize_bot():
     
     # Load all modules
     for module_name in ALL_MODULES:
-        importlib.import_module("TEAMZYRO.modules." + module_name)
-    LOGGER("TEAMZYRO.modules").info("𝐀𝐥𝐥 𝐅𝐞𝐚𝐭𝐮𝐫𝐞𝐬 𝐋𝐨𝐚𝐝𝐞𝐝 𝐁𝐚 𝐛𝐲🥳...")
+        imported_module = importlib.import_module("TEAMZYRO.modules." + module_name)
+    LOGGER("TEAMZYRO.modules").info("𝐀𝐥𝐥 𝐅𝐞𝐚𝐭𝐮𝐫𝐞𝐬 𝐋𝐨𝐚𝐝𝐞𝐝 𝐁𝐚𝐛𝐲🥳...")
     
     # Initialize database
     LOGGER("TEAMZYRO").info("🔄 Initializing database connections and indexes...")
     try:
-        if "initialize_database" in globals():
-            await initialize_database()
-            LOGGER("TEAMZYRO").info("✅ Database initialization complete")
+        await initialize_database()
+        LOGGER("TEAMZYRO").info("✅ Database initialization complete")
     except Exception as e:
         LOGGER("TEAMZYRO").error(f"❌ Database initialization failed: {e}")
         LOGGER("TEAMZYRO").warning("⚠️ Continuing with potentially slower queries...")
@@ -42,6 +34,7 @@ async def initialize_bot():
 
 
 def main() -> None:
+    # Create event loop
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     
@@ -52,18 +45,16 @@ def main() -> None:
         LOGGER("TEAMZYRO").critical(f"❌ Bot initialization failed: {e}")
         sys.exit(1)
     
-    # Start Pyrogram Client safely
+    # Start the Pyrogram client
     ZYRO.start()
 
-    # Verify FORCE_JOIN / MUST_JOIN target safely
-    target_join = getattr(sys.modules[__name__], "FORCE_JOIN", MUST_JOIN)
-    
-    if target_join:
+    # Verify FORCE_JOIN admin permissions and get/generate invite link
+    if FORCE_JOIN:
         try:
             try:
-                chat_target = int(target_join)
+                chat_target = int(FORCE_JOIN)
             except ValueError:
-                chat_target = target_join
+                chat_target = FORCE_JOIN
                 
             chat_obj = ZYRO.get_chat(chat_target)
             invite_link = chat_obj.invite_link
@@ -73,29 +64,15 @@ def main() -> None:
                 
             LOGGER("TEAMZYRO").info(f"Successfully verified FORCE_JOIN admin rights. Link: {invite_link}")
         except Exception as e:
-            LOGGER("TEAMZYRO").error(
-                "\n"
-                "=======================================================================\n"
-                "❌ CRITICAL STARTUP ERROR:\n"
-                f"Bot is NOT an admin in the FORCE_JOIN channel/chat ({target_join})!\n"
-                "Please ensure the bot is added to the channel as an Admin.\n"
-                f"Details: {e}\n"
-                "======================================================================="
-            )
-            try:
-                ZYRO.stop()
-            except Exception:
-                pass
-            sys.exit(1)
+            LOGGER("TEAMZYRO").warning(f"⚠️ Could not verify FORCE_JOIN chat ({FORCE_JOIN}): {e}")
 
-    # Verify BOT_LOGGING permissions
-    bot_logging_id = globals().get("BOT_LOGGING", None)
-    if bot_logging_id:
+    # Verify BOT_LOGGING permissions by sending a startup message
+    if BOT_LOGGING:
         try:
             try:
-                log_target = int(bot_logging_id)
+                log_target = int(BOT_LOGGING)
             except ValueError:
-                log_target = bot_logging_id
+                log_target = BOT_LOGGING
                 
             test_msg = ZYRO.send_message(
                 chat_id=log_target,
@@ -104,38 +81,17 @@ def main() -> None:
                      "✅ Database indexes initialized successfully!\n"
                      "🦋 Bot is ready to serve!"
             )
-            LOGGER("TEAMZYRO").info(f"Successfully verified BOT_LOGGING permissions. Test message sent (ID: {test_msg.id}).")
+            LOGGER("TEAMZYRO").info(f"Successfully verified BOT_LOGGING permissions. Message ID: {test_msg.id}")
         except Exception as e:
-            LOGGER("TEAMZYRO").error(
-                "\n"
-                "=======================================================================\n"
-                "❌ CRITICAL STARTUP ERROR:\n"
-                f"Bot cannot post/send messages to BOT_LOGGING chat ({bot_logging_id})!\n"
-                "Details: {e}\n"
-                "======================================================================="
-            )
-            try:
-                ZYRO.stop()
-            except Exception:
-                pass
-            sys.exit(1)
+            LOGGER("TEAMZYRO").warning(f"⚠️ Could not send log to BOT_LOGGING chat ({BOT_LOGGING}): {e}")
 
-    # Send optional start notification function if declared
-    if "send_start_message" in globals():
-        try:
-            send_start_message()
-        except Exception as e:
-            LOGGER("TEAMZYRO").warning(f"Could not send startup message: {e}")
+    # Start polling
+    application.run_polling(drop_pending_updates=True)
     
-    # Idle loop
     LOGGER("TEAMZYRO").info(
         "╔═════ஜ۩۞۩ஜ════╗\n  ☠︎︎MADE BY TEAMEGOIST☠︎︎\n╚═════ஜ۩۞۩ஜ════╝"
     )
     
-    from pyrogram import idle
-    idle()
-    ZYRO.stop()
-
 
 if __name__ == "__main__":
     main()
