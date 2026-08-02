@@ -1,97 +1,184 @@
-# ==========================================
-# Creator: MrZyro
-# Telegram: @MrZyro_dev
-# GitHub: https://github.com/MrZyro
-# ==========================================
+ ==========================================
 
-from TEAMZYRO import *
-import importlib
-import logging
+"""
+Main entry point for the Waifu Bot.
+Initializes all components, validates permissions, and starts the bot.
+"""
+
 import asyncio
 import sys
-from TEAMZYRO.modules import ALL_MODULES
+from typing import Optional
+
+from aiogram import Bot, Dispatcher
+from aiogram.types import BotCommand, BotCommandScopeDefault
+
+from app.core.config import Config
+from app.core.logging import setup_logging, get_logger
+from app.database.manager import DatabaseManager
+from app.services.validator import PermissionValidator
+from app.handlers import register_all_handlers
+from app.middleware import register_all_middleware
+from app.callbacks import register_all_callbacks
+
+logger = get_logger("main")
 
 
-async def initialize_bot():
-    """Initialize bot and database asynchronously."""
-    LOGGER("TEAMZYRO").info("🦋 Initializing WaifuBot...")
+async def setup_bot_commands(bot: Bot) -> None:
+    """
+    Set up bot commands for the menu.
     
-    # Load all modules
-    for module_name in ALL_MODULES:
-        imported_module = importlib.import_module("TEAMZYRO.modules." + module_name)
-    LOGGER("TEAMZYRO.modules").info("𝐀𝐥𝐥 𝐅𝐞𝐚𝐭𝐮𝐫𝐞𝐬 𝐋𝐨𝐚𝐝𝐞𝐝 𝐁𝐚𝐛𝐲🥳...")
+    Args:
+        bot: Bot instance
+    """
+    commands = [
+        BotCommand(command="start", description="Start the bot"),
+        BotCommand(command="help", description="Get help"),
+        BotCommand(command="profile", description="View your profile"),
+        BotCommand(command="shop", description="Visit the shop"),
+        BotCommand(command="gacha", description="Roll for waifus"),
+        BotCommand(command="daily", description="Claim daily reward"),
+        BotCommand(command="waifu", description="Manage your waifus"),
+        BotCommand(command="inventory", description="View your inventory"),
+        BotCommand(command="marry", description="Marry your waifu"),
+        BotCommand(command="divorce", description="Divorce your waifu"),
+    ]
+    
+    await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
+    logger.info("✅ Bot commands registered")
+
+
+async def initialize_bot(config: Config) -> None:
+    """
+    Initialize bot components asynchronously.
+    
+    Args:
+        config: Configuration instance
+    
+    Raises:
+        Exception: If initialization fails
+    """
+    logger.info("🦋 Initializing WaifuBot...")
     
     # Initialize database
-    LOGGER("TEAMZYRO").info("🔄 Initializing database connections and indexes...")
+    logger.info("🔄 Initializing database...")
+    db_manager = DatabaseManager(config)
+    await db_manager.initialize()
+    await db_manager.create_indexes()
+    logger.info("✅ Database initialized")
+    
+    # Validate channel permissions
+    logger.info("🔄 Validating channel permissions...")
+    validator = PermissionValidator(config)
+    
+    # Validate force join channel
+    force_join_link = await validator.validate_force_join_channel()
+    config.FORCE_JOIN_LINK = force_join_link
+    logger.info(f"✅ Force join channel verified: {force_join_link}")
+    
+    # Validate logging channel
+    await validator.validate_logging_channel()
+    logger.info("✅ Logging channel verified")
+    
+    # Send startup notification
+    await validator.send_startup_notification()
+    logger.info("✅ Startup notification sent")
+    
+    logger.info("✅ Bot initialization complete")
+
+
+async def main() -> None:
+    """Main entry point for the bot."""
     try:
-        await initialize_database()
-        LOGGER("TEAMZYRO").info("✅ Database initialization complete")
-    except Exception as e:
-        LOGGER("TEAMZYRO").error(f"❌ Database initialization failed: {e}")
-        LOGGER("TEAMZYRO").warning("⚠️ Continuing with potentially slower queries...")
-    
-    return True
-
-
-def main() -> None:
-    # Create event loop
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
-    # Initialize bot asynchronously
-    try:
-        loop.run_until_complete(initialize_bot())
-    except Exception as e:
-        LOGGER("TEAMZYRO").critical(f"❌ Bot initialization failed: {e}")
-        sys.exit(1)
-    
-    # Start the Pyrogram client
-    ZYRO.start()
-
-    # Verify FORCE_JOIN admin permissions and get/generate invite link
-    if FORCE_JOIN:
+        # Load configuration
+        config = Config()
+        
+        # Setup logging
+        setup_logging(config)
+        logger.info("🚀 Starting WaifuBot v2.0...")
+        
+        # Initialize bot
+        await initialize_bot(config)
+        
+        # Create bot and dispatcher instances
+        bot = Bot(token=config.BOT_TOKEN)
+        dp = Dispatcher()
+        
+        # Register middleware
+        register_all_middleware(dp, config)
+        logger.info("✅ Middleware registered")
+        
+        # Register handlers
+        register_all_handlers(dp)
+        logger.info("✅ Handlers registered")
+        
+        # Register callbacks
+        register_all_callbacks(dp)
+        logger.info("✅ Callbacks registered")
+        
+        # Setup bot commands
+        await setup_bot_commands(bot)
+        
+        # Store bot instance in config for global access
+        config.bot = bot
+        config.dispatcher = dp
+        
+        logger.info(
+            "╔═══════════════════════════════════════╗\n"
+            "║  🦋 WaifuBot is now running!          ║\n"
+            "║  Made with ❤️ by Team Egoist          ║\n"
+            "║  Press Ctrl+C to stop                 ║\n"
+            "╚═══════════════════════════════════════╝"
+        )
+        
+        # Start polling
         try:
-            try:
-                chat_target = int(FORCE_JOIN)
-            except ValueError:
-                chat_target = FORCE_JOIN
-                
-            chat_obj = ZYRO.get_chat(chat_target)
-            invite_link = chat_obj.invite_link
-            if not invite_link:
-                invite = ZYRO.create_chat_invite_link(chat_target)
-                invite_link = invite.invite_link
-                
-            LOGGER("TEAMZYRO").info(f"Successfully verified FORCE_JOIN admin rights. Link: {invite_link}")
-        except Exception as e:
-            LOGGER("TEAMZYRO").warning(f"⚠️ Could not verify FORCE_JOIN chat ({FORCE_JOIN}): {e}")
-
-    # Verify BOT_LOGGING permissions by sending a startup message
-    if BOT_LOGGING:
-        try:
-            try:
-                log_target = int(BOT_LOGGING)
-            except ValueError:
-                log_target = BOT_LOGGING
-                
-            test_msg = ZYRO.send_message(
-                chat_id=log_target,
-                text="⚙️ **WaifuBot Startup Notification**:\n"
-                     "✅ Successfully connected & verified write permissions in the logs channel!\n"
-                     "✅ Database indexes initialized successfully!\n"
-                     "🦋 Bot is ready to serve!"
+            await dp.start_polling(
+                bot,
+                drop_pending_updates=True,
+                allowed_updates=["message", "callback_query", "inline_query"]
             )
-            LOGGER("TEAMZYRO").info(f"Successfully verified BOT_LOGGING permissions. Message ID: {test_msg.id}")
-        except Exception as e:
-            LOGGER("TEAMZYRO").warning(f"⚠️ Could not send log to BOT_LOGGING chat ({BOT_LOGGING}): {e}")
+        except (KeyboardInterrupt, SystemExit):
+            logger.info("🛑 Bot stopped by user")
+        finally:
+            await shutdown_cleanup(bot, config)
+            
+    except Exception as e:
+        logger.critical(f"❌ Fatal error during startup: {e}", exc_info=True)
+        sys.exit(1)
 
-    # Start polling
-    application.run_polling(drop_pending_updates=True)
+
+async def shutdown_cleanup(bot: Bot, config: Config) -> None:
+    """
+    Perform graceful shutdown cleanup.
     
-    LOGGER("TEAMZYRO").info(
-        "╔═════ஜ۩۞۩ஜ════╗\n  ☠︎︎MADE BY TEAMEGOIST☠︎︎\n╚═════ஜ۩۞۩ஜ════╝"
-    )
+    Args:
+        bot: Bot instance
+        config: Configuration instance
+    """
+    logger.info("🔄 Shutting down gracefully...")
     
+    try:
+        # Close database connections
+        if hasattr(config, 'db_manager'):
+            await config.db_manager.close()
+            logger.info("✅ Database connections closed")
+        
+        # Close bot session
+        await bot.session.close()
+        logger.info("✅ Bot session closed")
+        
+    except Exception as e:
+        logger.error(f"❌ Error during shutdown: {e}")
+    
+    logger.info("👋 Goodbye!")
+
 
 if __name__ == "__main__":
-    main()
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("🛑 Bot stopped by user")
+        sys.exit(0)
+    except Exception as e:
+        logger.critical(f"❌ Unhandled exception: {e}", exc_info=True)
+        sys.exit(1)
