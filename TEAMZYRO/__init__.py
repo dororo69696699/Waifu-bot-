@@ -1,10 +1,3 @@
-# ==========================================
-# Creator: MrZyro
-# Telegram: @MrZyro_dev
-# GitHub: https://github.com/MrZyro
-# ==========================================
-
-# ------------------------------ IMPORTS ---------------------------------
 import logging
 import os
 import sys
@@ -16,12 +9,12 @@ from aiogram import Bot, Dispatcher, types
 from pyrogram import enums
 
 # --------------------------- LOGGING SETUP ------------------------------
-# Removed FileHandler("log.txt") to fix Railway shutdown crashes
 logging.basicConfig(
     level=logging.INFO,
     format="[%(asctime)s - %(levelname)s] - %(name)s - %(message)s",
     datefmt="%d-%b-%y %H:%M:%S",
     handlers=[
+        logging.FileHandler("log.txt"),
         logging.StreamHandler(),
     ],
 )
@@ -40,14 +33,15 @@ from config import (
     MUSJ_JOIN, IMGBB_API_KEY, START_MEDIA, PHOTO_URL, STATS_IMG, CHARA_CHANNEL_ID
 ) 
 
-# 🧪 CRITICAL TOKEN VALIDATION CHECK
-if not TOKEN or not isinstance(TOKEN, str) or TOKEN.strip() == "" or "Botfather" in TOKEN:
-    logging.error("❌ [CRITICAL] BOT_TOKEN IS EMPTY OR INVALID INSIDE CONFIG.PY / RAILWAY VARIABLES!")
-    print("\n⚠️  The 'TOKEN' variable is missing or blank inside your platform environment variables.")
-    print("👉 Please add 'TOKEN' in Railway Environment Variables.\n")
+# Validation check
+if not TOKEN or TOKEN.strip() == "" or "Botfather" in TOKEN:
+    logging.error("❌ [CRITICAL] BOT_TOKEN IS EMPTY OR INVALID INSIDE CONFIG.PY / ENV!")
+    print("\n🦋 Ara ara~ Host engine initialization aborted!")
+    print("⚠️  The 'TOKEN' variable is missing or blank inside your configuration file.")
+    print("👉 Please edit your config file or platform environment variables and insert a valid token from @BotFather.\n")
     sys.exit(1)
 
-FORCE_JOIN_LINK = "https://t.me/+fPjchISAGnc3OGJl"  # Updated dynamically on bot startup
+FORCE_JOIN_LINK = "https://t.me/+fPjchISAGnc3OGJl"
 
 # --------------------- TELEGRAM BOT CONFIGURATION -----------------------
 command_filter = f.create(lambda _, __, message: message.text and message.text.startswith("/"))
@@ -57,21 +51,18 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 # -------------------------- DATABASE SETUP ------------------------------
-ddw = AsyncIOMotorClient(mongo_url) if mongo_url else None
-if ddw:
-    db = ddw[DB_NAME]
-    collection = db['anime_characters_lol']
-    user_totals_collection = db['user_totals_lmaoooo']
-    user_collection = db["user_collection_lmaoooo"]
-    group_user_totals_collection = db['group_user_totalsssssss']
-    top_global_groups_collection = db['top_global_groups']
-    pm_users = db['total_pm_users']
-    discounts_collection = db['discounts']
-    redeem_collection = db["redeem_codes"]
-else:
-    db = collection = user_totals_collection = user_collection = None
-    group_user_totals_collection = top_global_groups_collection = pm_users = None
-    discounts_collection = redeem_collection = None
+ddw = AsyncIOMotorClient(mongo_url)
+db = ddw[DB_NAME]
+collection = db['anime_characters_lol']
+user_totals_collection = db['user_totals_lmaoooo']
+user_collection = db["user_collection_lmaoooo"]
+group_user_totals_collection = db['group_user_totalsssssss']
+top_global_groups_collection = db['top_global_groups']
+pm_users = db['total_pm_users']
+discounts_collection = db['discounts']
+redeem_collection = db["redeem_codes"]
+
+backup_ddw = AsyncIOMotorClient(backup_mongo_url)
 
 # -------------------------- GLOBAL VARIABLES ----------------------------
 app = ZYRO
@@ -102,24 +93,18 @@ from TEAMZYRO.unit.zyro_rarity import *
 # ------------------------------------------------------------------------
 
 async def PLOG(text: str):
-    if not BOT_LOGGING:
-        return
-    try:
-        await app.send_message(
-           chat_id=BOT_LOGGING,
-           text=f"🦋 <b>[LAB LOG]:</b>\n{text}",
-           parse_mode=enums.ParseMode.HTML
-       )
-    except Exception as e:
-        LOGGER(__name__).warning(f"Failed to post to PLOG: {e}")
+    await app.send_message(
+       chat_id=BOT_LOGGING,
+       text=f"🦋 <b>[LAB LOG]:</b>\n{text}",
+       parse_mode=enums.ParseMode.HTML
+   )
 
 # ==========================================
 # DATABASE INITIALIZATION & INDEXES
 # ==========================================
 
 async def create_redeem_indexes():
-    if not redeem_collection:
-        return
+    """Create indexes for redeem codes collection for better performance."""
     try:
         await redeem_collection.create_index("code", unique=True)
         await redeem_collection.create_index("is_active")
@@ -132,8 +117,7 @@ async def create_redeem_indexes():
         LOGGER(__name__).error(f"❌ Error creating redeem indexes: {e}")
 
 async def create_user_collection_indexes():
-    if not user_collection:
-        return
+    """Create indexes for user collection for better performance."""
     try:
         await user_collection.create_index("id", unique=True)
         await user_collection.create_index("username")
@@ -143,8 +127,7 @@ async def create_user_collection_indexes():
         LOGGER(__name__).error(f"❌ Error creating user collection indexes: {e}")
 
 async def create_character_collection_indexes():
-    if not collection:
-        return
+    """Create indexes for character collection for better performance."""
     try:
         await collection.create_index("id", unique=True)
         await collection.create_index("anime")
@@ -155,14 +138,13 @@ async def create_character_collection_indexes():
         LOGGER(__name__).error(f"❌ Error creating character collection indexes: {e}")
 
 async def initialize_database():
-    if not ddw:
-        LOGGER(__name__).warning("⚠️ MONGO_URL not set. Skipping database initialization.")
-        return
+    """Initialize all database collections and indexes."""
     try:
         LOGGER(__name__).info("🔄 Initializing database collections...")
         await create_redeem_indexes()
         await create_user_collection_indexes()
         await create_character_collection_indexes()
+        
         LOGGER(__name__).info("✅ Database initialization complete")
         await PLOG("✅ **Database Initialization Complete**\nAll collections and indexes have been set up successfully.")
     except Exception as e:
@@ -174,6 +156,7 @@ async def initialize_database():
 # ==========================================
 
 async def on_startup():
+    """Function to run when bot starts."""
     LOGGER(__name__).info("🦋 Bot is starting up...")
     await initialize_database()
     await PLOG(
@@ -182,5 +165,3 @@ async def on_startup():
         f"📅 **Time:** {__import__('datetime').datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
     )
     LOGGER(__name__).info("✅ Bot startup complete")
-
-backup_ddw = AsyncIOMotorClient(backup_mongo_url) if backup_mongo_url else None
